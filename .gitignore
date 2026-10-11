@@ -74,7 +74,7 @@ venv.bak/
 .ipynb_checkpoints
 
 # pyenv
-.python-version
+# .python-version is committed so local and Vercel use the same Python minor.
 
 # pipenv
 Pipfile.lock
@@ -88,6 +88,7 @@ celerybeat-schedule
 # dotenv
 .env
 .env.*
+!.env.example
 
 # mypy
 .mypy_cache/
@@ -110,3 +111,6 @@ Thumbs.db
 .coverage
 coverage.xml
 *.prof
+
+# Local Vercel project metadata
+.vercel/

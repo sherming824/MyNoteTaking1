@@ -12,6 +12,11 @@ A modern, responsive web application for managing personal notes with a beautifu
 - **Responsive Design**: Works perfectly on desktop and mobile devices
 - **Modern UI**: Beautiful gradient design with smooth animations
 - **Real-time Updates**: Instant feedback and updates
+- **Translate Notes**: Preview translations of the title and content in eight languages,
+  then explicitly save the result as a new note without replacing the original.
+
+See [translation and Neon setup](docs/translation-setup.md) for the current configuration,
+campus-network restriction, and verification steps.
 
 ## 🚀 Live Demo
 
@@ -27,7 +32,7 @@ The application is deployed and accessible at: **https://3dhkilc88dkk.manus.spac
 ### Backend
 - **Python Flask**: Web framework for API endpoints
 - **SQLAlchemy**: ORM for database operations
-- **Flask-CORS**: Cross-origin resource sharing support
+- **Same-origin API**: The frontend and backend use the same origin
 
 ### Database
 - **SQLite**: Lightweight, file-based database for data persistence
@@ -43,12 +48,13 @@ notetaking-app/
 │   ├── routes/
 │   │   ├── user.py          # User API routes (template)
 │   │   └── note.py          # Note API endpoints
-│   ├── static/
-│   │   ├── index.html       # Frontend application
-│   │   └── favicon.ico      # Application icon
-│   ├── database/
-│   │   └── app.db           # SQLite database file
 │   └── main.py              # Flask application entry point
+├── public/
+│   ├── index.html           # Frontend, served by the Vercel CDN
+│   └── favicon.ico
+├── database/
+│   └── app.db               # Local SQLite database (ignored by Git)
+├── tests/                   # Backend and frontend regression tests
 ├── venv/                    # Python virtual environment
 ├── requirements.txt         # Python dependencies
 └── README.md               # This file
@@ -145,22 +151,60 @@ CREATE TABLE note (
 
 ## 🚀 Deployment
 
-The application is configured for easy deployment with:
-- CORS enabled for cross-origin requests
-- Host binding to `0.0.0.0` for external access
-- Production-ready Flask configuration
-- Persistent SQLite database
+Vercel configuration is included. `src/main.py` exports the Flask `app`, `public/`
+contains the frontend, and `.python-version` selects Python 3.12. `vercel.json`
+sets a 60-second function duration and excludes local credentials and database files.
+Real OpenRouter translation returned HTTP 200 with translated title and paragraphs.
+The project owner verified saving the original and translation as separate Neon notes,
+reloading, and persistence after restarting the app. A hosted Vercel deployment still
+needs verification. See [the verification record](docs/live-verification.md).
+Follow [the deployment guide](docs/vercel-deployment.md) to configure the cloud environment.
+The local SQLite file must not be used as persistent storage in Vercel Functions.
+See [Flask on Vercel](https://vercel.com/docs/frameworks/backend/flask).
+
+This is a shared demonstration app: it does not implement login or per-user note isolation.
+The unused user CRUD template is not registered as an API.
 
 ## 🔧 Configuration
 
 ### Environment Variables
-- `FLASK_ENV`: Set to `development` for debug mode
-- `SECRET_KEY`: Flask secret key for sessions
+- `FLASK_DEBUG=1`: Opt in to local debug mode. Debug is off by default.
+- `SECRET_KEY`: Optional session key, read from the process environment; no hardcoded fallback.
+  The current note app does not use sessions. Configure a key before adding session features.
+- Start with `python src/main.py`. The local server binds to `127.0.0.1:5001`.
+- Restart the server after changing Python code or dependencies when debug mode is off.
+- Local configuration is loaded from the ignored `.env`; `.env.example` has empty credential fields.
+- `LLM_API_URL`, `LLM_API_KEY`, `LLM_MODEL`: Server-side translation provider settings.
+- `LLM_JSON_MODE`: `prompt` by default; `json_object` for providers supporting that format.
+- `DATABASE_URL`: Empty means local SQLite; set a Neon PostgreSQL connection for external storage.
+- `DATABASE_INIT_URL`: Optional direct PostgreSQL connection used only by `flask init-db`.
 
-### Database Configuration
-- Database file: `src/database/app.db`
-- Automatic table creation on first run
-- SQLAlchemy ORM for database operations
+### Database and API
+- Database file: `database/app.db` at the repository root.
+- SQLite tables are created automatically. Initialize PostgreSQL tables explicitly using
+  `python -m flask --app src.main init-db` after configuring its connection.
+- Changing databases does not migrate existing SQLite notes automatically.
+- Titles must be strings of at most 200 characters; content must be a string.
+- At least a title or nonblank content is required. An empty title defaults to `Untitled`.
+- Maximum HTTP request body size: 1 MiB. API errors are returned as JSON.
+- Switching notes saves pending edits first; if saving fails, the editor keeps those edits.
+- While a save/delete request is running, editing controls are temporarily disabled.
+
+## Regression Tests
+
+From the repository root after activating the virtual environment:
+
+```cmd
+python -m unittest discover -s tests -v
+node tests/frontend.test.cjs
+python -m pip check
+```
+
+Node.js is only required for the frontend logic tests, not for running this Flask app.
+Backend tests use a separate in-memory SQLite database. The frontend tests cover
+save/switch races, failure recovery, drafts, search, deletion, safe messages, translation
+previews, stale responses, and saving translations without replacing the source.
+LLM tests use mocked provider responses; they do not confirm live model availability.
 
 ## 📱 Browser Compatibility
 
